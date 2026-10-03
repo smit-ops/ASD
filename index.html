@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Gesture Recognition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-color: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --nav-height: 70px;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            padding-top: var(--nav-height);
+        }
+
+        /* Navbar */
+        nav {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background-color: var(--surface);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+        }
+
+        .logo img {
+            height: clamp(35px, 5vh, 45px);
+            width: auto;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+
+        .hero-logo {
+            max-width: 250px;
+            width: 100%;
+            height: auto;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin: 0 auto 24px auto;
+            display: block;
+        }
+
+        .nav-links { display: flex; gap: 32px; }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 1rem;
+            padding: 8px 0;
+            position: relative;
+            transition: color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .nav-links a:hover { color: var(--primary); }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 0; height: 2px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a.active { color: var(--primary); }
+        .nav-links a.active::after { width: 100%; }
+
+        /* Main */
+        main {
+            padding: 32px 40px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease forwards;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .page.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Camera Page */
+        .camera-layout {
+            display: grid;
+            grid-template-columns: 2.5fr 1fr;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        .camera-feed-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #1e293b;
+            border-radius: var(--radius-md);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+        }
+
+        #cameraFeed {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #cameraFeed.visible { opacity: 1; }
+
+        .status-overlay {
+            position: absolute;
+            top: 16px; left: 16px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            backdrop-filter: blur(4px);
+            font-weight: 500;
+            z-index: 2;
+        }
+
+        .live-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: blink 1.2s infinite;
+            vertical-align: middle;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        .video-placeholder {
+            color: #94a3b8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 1;
+        }
+        .video-placeholder.hidden { display: none; }
+
+        /* Camera controls: status left, button center */
+        .camera-controls {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            width: 100%;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Detection Panel */
+        .detection-panel { display: flex; flex-direction: column; gap: 20px; }
+
+        .info-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 24px;
+            text-align: center;
+        }
+
+        .info-card h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .output-name {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .output-name.empty { color: var(--text-muted); font-size: 1.5rem; font-weight: 400; }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background-color: var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--primary);
+            border-radius: 10px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .preview-box {
+            width: 100%;
+            aspect-ratio: 1;
+            background: var(--bg-color);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #fruitImg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #fruitImg.show { display: block; }
+
+        @keyframes popIn {
+            from { transform: scale(0.7); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+
+        .status-text-box {
+            text-align: left;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            background: var(--bg-color);
+            padding: 14px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+            min-height: unset;
+            margin: 0;
+            width: 100%;
+        }
+
+        /* Home Page */
+        .home-hero {
+            text-align: center;
+            margin: 40px auto 60px;
+            max-width: 700px;
+        }
+
+        .home-hero h1 {
+            font-size: 3rem;
+            color: var(--text-main);
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .home-hero p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .how-it-works { max-width: 1000px; margin: 0 auto; text-align: center; }
+        .how-it-works h2 { font-size: 2rem; color: var(--text-main); margin-bottom: 32px; }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+
+        .step-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 32px 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .step-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+
+        .step-icon {
+            width: 80px; height: 80px;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .step-icon svg { width: 40px; height: 40px; }
+        .step-card h3 { font-size: 1.2rem; color: var(--text-main); margin-bottom: 12px; }
+        .step-card p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
+
+        /* Tutorials Page */
+        .tuts-header { text-align: center; margin-bottom: 30px; }
+
+        .search-bar { margin: 20px auto; max-width: 450px; position: relative; }
+
+        .search-bar input {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            outline: none;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-bar input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .search-bar svg {
+            position: absolute;
+            left: 16px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            width: 20px; height: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .tab {
+            background: transparent;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px 16px;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .tab:hover { color: var(--text-main); }
+        .tab.active { color: var(--primary); }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -13px; left: 0;
+            width: 100%; height: 3px;
+            background: var(--primary);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            border: 1px solid var(--border);
+        }
+
+        .card:hover { transform: scale(1.03); box-shadow: var(--shadow-lg); }
+
+        .card-thumb {
+            height: 160px;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .card-body { padding: 16px; }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* About Page */
+        .about-content-container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 40px;
+            border: 1px solid var(--border);
+        }
+
+        .about-content-container p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background: transparent; color: var(--text-main); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-color); border-color: var(--text-muted); }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal-content {
+            background: var(--surface);
+            width: 95%;
+            max-width: 1200px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px; right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+        }
+
+        .modal-close:hover { color: var(--text-main); }
+        .modal-title { font-size: 1.5rem; margin-bottom: 24px; font-weight: 600; text-transform: capitalize; }
+
+        .modal-images-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+
+        .modal-images-grid img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            filter: grayscale(100%);
+            transition: transform 0.2s;
+            border: 1px solid var(--border);
+        }
+
+        .modal-images-grid img:hover { transform: scale(1.05); }
+
+        .fullscreen-viewer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .fullscreen-viewer.active { display: flex; }
+
+        .fullscreen-viewer img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: var(--radius-md);
+            filter: grayscale(100%);
+        }
+
+        .fullscreen-close {
+            position: absolute;
+            top: 20px; right: 30px;
+            font-size: 2.5rem;
+            color: white;
+            cursor: pointer;
+        }
+
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 3rem;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            user-select: none;
+            padding: 16px 24px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius-md);
+            transition: all 0.3s;
+        }
+
+        .nav-arrow:hover { background: rgba(255, 255, 255, 0.2); color: white; }
+        .left-arrow  { left: 40px; }
+        .right-arrow { right: 40px; }
+
+        /* ── Responsive ─────────────────────────────────────────────────── */
+        @media (max-width: 1024px) {
+            .camera-layout { grid-template-columns: 1fr; }
+            .nav-links { gap: 20px; }
+            main { padding: 24px; }
+        }
+
+        @media (max-width: 768px) {
+            :root { --nav-height: auto; }
+
+            body { padding-top: 110px; }
+
+            nav {
+                flex-direction: column;
+                align-items: center;
+                padding: 10px 16px;
+                height: auto;
+            }
+
+            .logo img { height: 35px; }
+
+            .nav-links {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 12px;
+                margin-top: 8px;
+            }
+
+            .nav-links a { font-size: 0.9rem; padding: 4px 8px; }
+
+            main { padding: 16px; }
+
+            .home-hero h1 { font-size: 2.2rem; }
+            .how-it-works h2 { font-size: 1.6rem; }
+
+            .steps-grid { grid-template-columns: 1fr; gap: 20px; }
+            .step-card { padding: 24px 16px; }
+
+            .camera-feed-card { padding: 16px; }
+
+            .camera-controls {
+                grid-template-columns: 1fr !important;
+                display: flex !important;
+                flex-direction: column-reverse;
+                gap: 12px !important;
+            }
+
+            .status-text-box { text-align: center; }
+
+            .tabs { gap: 12px; flex-wrap: wrap; }
+            .tab { font-size: 0.95rem; padding: 6px 12px; }
+
+            .cards-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 16px;
+            }
+
+            .modal-images-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+            body { padding-top: 130px; }
+
+            .logo { flex-wrap: wrap; justify-content: center; }
+            .nav-links a { font-size: 0.85rem; padding: 4px 6px; }
+
+            .home-hero h1 { font-size: 1.8rem; }
+
+            .btn { width: 100%; margin: 6px 0 !important; }
+
+            div[style*="margin-top:24px;"] {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .cards-grid { grid-template-columns: 1fr; }
+            .modal-images-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav>
+        <div class="logo">
+            <img src="Project%20Logo%20small.jpeg" alt="Logo">
+            Hand Gesture Recognition For Deaf-Mute Communication
+        </div>
+        <div class="nav-links">
+            <a onclick="navigate('home')"   id="nav-home"   class="active">Home</a>
+            <a onclick="navigate('camera')" id="nav-camera">Camera</a>
+            <a onclick="navigate('tuts')"   id="nav-tuts">Tutorials</a>
+            <a onclick="navigate('about')"  id="nav-about">About</a>
+        </div>
+    </nav>
+
+    <main>
+
+        <!-- Page: Home -->
+        <div id="page-home" class="page active">
+            <div class="home-hero">
+                <img src="Project%20Logo.jpeg" alt="Project Logo" class="hero-logo">
+                <h1>Welcome to Fruit Detect AI</h1>
+                <p>Learn and recognize fruit gestures with real-time AI.</p>
+                <div style="margin-top:24px;">
+                    <button class="btn btn-primary" onclick="navigate('camera')">Try Camera Now</button>
+                    <button class="btn btn-secondary" onclick="navigate('tuts')" style="margin-left:12px;">View Tutorials</button>
+                </div>
+            </div>
+
+            <div class="how-it-works">
+                <h2>How It Works</h2>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                            </svg>
+                        </div>
+                        <h3>1. Show a Gesture</h3>
+                        <p>Perform one of the supported hand gestures in front of your camera.</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                            </svg>
+                        </div>
+                        <h3>2. AI Detects Gesture</h3>
+                        <p>Our advanced machine learning model processes the feed in real time.</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <img src="icons/home.jpg" alt="Fruit" style="width:48px;height:48px;object-fit:contain;">
+                        </div>
+                        <h3>3. Fruit Identified</h3>
+                        <p>The system instantly identifies the corresponding fruit.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page: Camera -->
+        <div id="page-camera" class="page">
+            <div class="camera-layout">
+
+                <!-- Left: Camera Feed -->
+                <div class="camera-feed-card">
+                    <div class="video-container">
+                        <div class="status-overlay" id="camera-status-overlay">Idle</div>
+
+                        <!-- Offline placeholder -->
+                        <div class="video-placeholder" id="placeholder">
+                            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                            <span id="camera-placeholder-text">Camera Feed Offline</span>
+                        </div>
+
+                        <!-- Live stream from Flask -->
+                        <img id="cameraFeed" src="" alt="Camera Feed" />
+                    </div>
+
+                    <!-- Controls: status left | button center | spacer right -->
+                    <div class="camera-controls">
+                        <div class="status-text-box" id="system-status-box">Ready. Waiting for camera input...</div>
+                        <button class="btn btn-primary" onclick="toggleCamera()" id="btn-toggle-cam">Start Camera</button>
+                        <div></div>
+                    </div>
+                </div>
+
+                <!-- Right: Detection Info -->
+                <div class="detection-panel">
+
+                    <!-- Output Name -->
+                    <div class="info-card">
+                        <h3>Detected Fruit</h3>
+                        <div class="output-name empty" id="output-result">—</div>
+                    </div>
+
+                    <!-- Accuracy -->
+                    <div class="info-card">
+                        <h3>Confidence</h3>
+                        <div class="progress-bar-container">
+                            <div class="progress-fill" id="accuracy-bar"></div>
+                        </div>
+                        <div style="margin-top:10px; font-weight:600; color:var(--text-main);" id="accuracy-text">0%</div>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div class="info-card" style="padding:16px;">
+                        <h3 style="margin-bottom:12px;">Image Preview</h3>
+                        <div class="preview-box">
+                            <img id="fruitImg" src="" alt="Fruit" />
+                            <span id="imgPlaceholder">No fruit detected</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Page: Tutorials -->
+        <div id="page-tuts" class="page">
+            <div class="tuts-header">
+                <h1 style="font-size:2rem; color:var(--text-main);">Tutorials</h1>
+                <div class="search-bar">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" placeholder="Search lessons, categories...">
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTutTab('tab1', this)">Videos</button>
+                <button class="tab"        onclick="switchTutTab('tab2', this)">Templates</button>
+            </div>
+
+            <!-- Videos Tab -->
+            <div id="tab1" class="tab-content active">
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/apple.mp4" poster="icons/apple.png" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Apple</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/Cherry.mp4" poster="icons/cherry.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Cherry</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/avocado.mp4" poster="icons/avocado.png" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Avocado</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/banana.mp4" poster="icons/banana.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Banana</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/coconut.mp4" poster="icons/coconut.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Coconut</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/grapes.mp4" poster="icons/grapes.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Grapes</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/mango.mp4" poster="icons/mango.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Mango</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/orange.mp4" poster="icons/Orange.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Orange</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/peach.mp4" poster="icons/peach.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Peach</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/pear.mp4" poster="icons/pear.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Pear</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/pineapple.mp4" poster="icons/pineapple.png" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Pineapple</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-thumb" style="background:#000;padding:0;">
+                            <video src="Tutorials/pumpkin.mp4" poster="icons/pumpkin.jpg" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+                        </div>
+                        <div class="card-body"><div class="card-title">Pumpkin</div><div class="card-meta">Hand Gesture Video</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Templates Tab -->
+            <div id="tab2" class="tab-content">
+                <div class="cards-grid">
+                    <div class="card" onclick="openTemplateModal('Apple')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/apple.png" alt="Apple" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Apple</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Cherry')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/cherry.jpg" alt="Cherry" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Cherry</div><div class="card-meta">10 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Avocado')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/avocado.png" alt="Avocado" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Avocado</div><div class="card-meta">10 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Banana')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/banana.jpg" alt="Banana" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Banana</div><div class="card-meta">10 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Coconut')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/coconut.jpg" alt="Coconut" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Coconut</div><div class="card-meta">10 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Grapes')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/grapes.jpg" alt="Grapes" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Grapes</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Mango')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/mango.jpg" alt="Mango" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Mango</div><div class="card-meta">10 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Orange')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/Orange.jpg" alt="Orange" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Orange</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Peach')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/peach.jpg" alt="Peach" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Peach</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Pear')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/pear.jpg" alt="Pear" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Pear</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Pineapple')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/pineapple.png" alt="Pineapple" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Pineapple</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                    <div class="card" onclick="openTemplateModal('Pumpkin')">
+                        <a href="javascript:void(0)" class="card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none;padding:0;overflow:hidden;">
+                            <img src="icons/pumpkin.jpg" alt="Pumpkin" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        <div class="card-body"><div class="card-title">Pumpkin</div><div class="card-meta">9 Greyscale Templates</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page: About -->
+        <div id="page-about" class="page">
+            <h1 style="text-align:center; margin-bottom:24px;">About</h1>
+            <div class="about-content-container">
+                <p>
+                    Hand gesture communication works by using a system that detects and interprets movements of the
+                    hands using sensors and algorithms. First, a camera or motion sensor captures the image or position
+                    of the hand. Then, the system processes this data using techniques from Computer Vision to identify
+                    the shape, position, and movement of the hand. After that, it applies Machine Learning models that
+                    have been trained to recognize specific gestures (like waving or pointing). These models compare the
+                    detected gesture with known patterns and decide what it means. Finally, the system converts this
+                    meaning into an action, such as moving a cursor, controlling a device, or translating gestures into
+                    words.
+                </p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Template Modal -->
+    <div id="template-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
+            <h2 class="modal-title" id="modal-fruit-title">Templates</h2>
+            <div class="modal-images-grid" id="modal-images-grid"></div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Viewer -->
+    <div id="fullscreen-viewer" class="fullscreen-viewer" onclick="closeFullscreen()">
+        <div class="fullscreen-close">&times;</div>
+        <div class="nav-arrow left-arrow"  onclick="navigateFullscreen(-1, event)">&#10094;</div>
+        <img id="fullscreen-image" src="" alt="Full Screen" onclick="event.stopPropagation()">
+        <div class="nav-arrow right-arrow" onclick="navigateFullscreen(1, event)">&#10095;</div>
+    </div>
+
+    <script>
+        // ── CONFIG ──────────────────────────────────────────────────────────
+        const SERVER = 'http://localhost:5000';
+
+        function fruitImgUrl(fruit) {
+            return `${SERVER}/real_fruits/${fruit.toLowerCase().trim().replace(/\s+/g, '_')}`;
+        }
+
+        // ── STATE ────────────────────────────────────────────────────────────
+        let running      = false;
+        let pollInterval = null;
+        let lastFruit    = null;
+        let spokenFruit  = null;
+
+        // ── DOM REFS ─────────────────────────────────────────────────────────
+        const cameraFeed    = document.getElementById('cameraFeed');
+        const placeholder   = document.getElementById('placeholder');
+        const statusOverlay = document.getElementById('camera-status-overlay');
+        const outputResult  = document.getElementById('output-result');
+        const accuracyBar   = document.getElementById('accuracy-bar');
+        const accuracyText  = document.getElementById('accuracy-text');
+        const fruitImg      = document.getElementById('fruitImg');
+        const imgPlaceholder= document.getElementById('imgPlaceholder');
+        const statusBox     = document.getElementById('system-status-box');
+        const btnToggle     = document.getElementById('btn-toggle-cam');
+
+        // ── NAVIGATION ───────────────────────────────────────────────────────
+        function navigate(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.getElementById('nav-'  + pageId).classList.add('active');
+        }
+
+        // ── TABS ─────────────────────────────────────────────────────────────
+        function switchTutTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // ── CAMERA TOGGLE ────────────────────────────────────────────────────
+        function toggleCamera() {
+            running ? stopCamera() : startCamera();
+        }
+
+        function startCamera() {
+            running = true;
+
+            btnToggle.textContent = 'Stop Camera';
+            btnToggle.style.backgroundColor = '#ef4444';
+
+            statusOverlay.innerHTML = '<span class="live-dot"></span> LIVE';
+            statusOverlay.style.background = 'rgba(16,185,129,0.85)';
+
+            cameraFeed.src = `${SERVER}/video_feed`;
+            cameraFeed.onload = () => {
+                cameraFeed.classList.add('visible');
+                placeholder.classList.add('hidden');
+                statusBox.textContent = 'Processing active stream... Model is running with real-time detection.';
+            };
+            cameraFeed.onerror = () => {
+                statusBox.textContent = 'Error — is the Flask server running at ' + SERVER + '?';
+            };
+
+            pollInterval = setInterval(fetchPrediction, 300);
+        }
+
+        function stopCamera() {
+            running = false;
+
+            btnToggle.textContent = 'Start Camera';
+            btnToggle.style.backgroundColor = '';
+
+            cameraFeed.src = '';
+            cameraFeed.classList.remove('visible');
+            placeholder.classList.remove('hidden');
+
+            statusOverlay.textContent = 'Idle';
+            statusOverlay.style.background = 'rgba(0,0,0,0.6)';
+
+            clearInterval(pollInterval);
+            resetDisplay();
+            statusBox.textContent = 'Ready. Waiting for camera input...';
+            lastFruit   = null;
+            spokenFruit = null;
+        }
+
+        // ── PREDICTION POLLING ────────────────────────────────────────────────
+        async function fetchPrediction() {
+            try {
+                const res  = await fetch(`${SERVER}/prediction`);
+                const data = await res.json();
+                data.fruit ? updateDisplay(data.fruit, data.confidence) : resetDisplay();
+            } catch(e) {
+                statusBox.textContent = 'Error — is the Flask server running at ' + SERVER + '?';
+            }
+        }
+
+        // ── DISPLAY UPDATE ────────────────────────────────────────────────────
+        function updateDisplay(fruit, conf) {
+            outputResult.textContent = fruit;
+            outputResult.classList.remove('empty');
+
+            accuracyBar.style.width  = `${conf}%`;
+            accuracyText.textContent = `${conf}%`;
+
+            if (fruit !== lastFruit) {
+                lastFruit = fruit;
+
+                fruitImg.classList.remove('show');
+                imgPlaceholder.style.display = 'none';
+
+                setTimeout(() => {
+                    fruitImg.src = fruitImgUrl(fruit);
+                    fruitImg.onload  = () => fruitImg.classList.add('show');
+                    fruitImg.onerror = () => {
+                        fruitImg.classList.remove('show');
+                        imgPlaceholder.style.display = 'block';
+                        imgPlaceholder.textContent = `No image for "${fruit}"`;
+                    };
+                }, 150);
+
+                if (fruit !== spokenFruit) {
+                    speakFruit(fruit);
+                    spokenFruit = fruit;
+                }
+            }
+        }
+
+        function resetDisplay() {
+            outputResult.textContent = '—';
+            outputResult.classList.add('empty');
+            accuracyBar.style.width  = '0%';
+            accuracyText.textContent = '0%';
+
+            if (lastFruit !== null) {
+                fruitImg.classList.remove('show');
+                imgPlaceholder.style.display = 'block';
+                imgPlaceholder.textContent = 'No fruit detected';
+                lastFruit   = null;
+                spokenFruit = null;
+            }
+        }
+
+        // ── BROWSER TTS ───────────────────────────────────────────────────────
+        function speakFruit(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.rate   = 0.95;
+            utter.volume = 1;
+            window.speechSynthesis.speak(utter);
+        }
+
+        // ── TEMPLATES MODAL ───────────────────────────────────────────────────
+        const templateImages = {
+            "apple":     ["gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg","gray_frame_0017.jpg","gray_frame_0018.jpg","gray_frame_0019.jpg"],
+            "avocado":   ["gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg"],
+            "banana":    ["gray_frame_0004.jpg","gray_frame_0005.jpg","gray_frame_0006.jpg","gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg"],
+            "cherry":    ["gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg"],
+            "coconut":   ["gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg","gray_frame_0017.jpg"],
+            "grapes":    ["gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg","gray_frame_0017.jpg","gray_frame_0018.jpg","gray_frame_0019.jpg"],
+            "mango":     ["gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg","gray_frame_0017.jpg","gray_frame_0018.jpg"],
+            "orange":    ["gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg"],
+            "peach":     ["gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg"],
+            "pear":      ["gray_frame_0005.jpg","gray_frame_0006.jpg","gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg"],
+            "pineapple": ["gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg","gray_frame_0015.jpg","gray_frame_0016.jpg"],
+            "pumpkin":   ["gray_frame_0006.jpg","gray_frame_0007.jpg","gray_frame_0008.jpg","gray_frame_0009.jpg","gray_frame_0010.jpg","gray_frame_0011.jpg","gray_frame_0012.jpg","gray_frame_0013.jpg","gray_frame_0014.jpg"]
+        };
+
+        let currentFullscreenImages = [];
+        let currentFullscreenIndex  = 0;
+
+        function openTemplateModal(fruit) {
+            document.getElementById('modal-fruit-title').textContent = fruit + ' Templates';
+            const grid = document.getElementById('modal-images-grid');
+            grid.innerHTML = '';
+            const key    = fruit.toLowerCase();
+            const images = templateImages[key] || [];
+
+            if (!images.length) {
+                grid.innerHTML = `<p>No images found in images/${key}/</p>`;
+            } else {
+                currentFullscreenImages = images.map(n => `images/${key}/${n}`);
+                images.forEach((name, i) => {
+                    const img = document.createElement('img');
+                    img.src = currentFullscreenImages[i];
+                    img.onerror = function() {
+                        this.src = `https://via.placeholder.com/1920x1080/e2e8f0/94a3b8.png?text=${fruit}+${name}`;
+                        currentFullscreenImages[i] = this.src;
+                    };
+                    img.onclick = () => openFullscreen(i);
+                    grid.appendChild(img);
+                });
+            }
+            document.getElementById('template-modal').classList.add('active');
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('active');
+        }
+
+        function openFullscreen(index) {
+            currentFullscreenIndex = index;
+            document.getElementById('fullscreen-image').src = currentFullscreenImages[index];
+            document.getElementById('fullscreen-viewer').classList.add('active');
+        }
+
+        function navigateFullscreen(step, event) {
+            if (event) event.stopPropagation();
+            if (!currentFullscreenImages.length) return;
+            currentFullscreenIndex = (currentFullscreenIndex + step + currentFullscreenImages.length) % currentFullscreenImages.length;
+            document.getElementById('fullscreen-image').src = currentFullscreenImages[currentFullscreenIndex];
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreen-viewer').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
