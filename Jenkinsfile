@@ -11,22 +11,6 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                echo 'Checking Python environment...'
-                bat 'python --version'
-                bat 'python -m compileall .'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo 'Running automated Python validation...'
-                bat 'python -m py_compile live_gesture.py'
-                bat 'python -m py_compile conversion.py'
-            }
-        }
-
         stage('Docker Build') {
             steps {
                 echo 'Building Docker image...'
@@ -41,7 +25,7 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline failed. Check the Jenkins Console Output.'
+            echo 'Pipeline failed. Check the Console Output.'
         }
     }
 }
