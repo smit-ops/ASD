@@ -1,4 +1,3 @@
-
 pipeline {
 
     agent any
@@ -7,23 +6,25 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo 'Checking out code from GitHub...'
+                echo 'Checking out project from GitHub...'
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Validating Python project...'
+                echo 'Checking Python environment...'
                 bat 'python --version'
-                bat 'python -m compileall .'
+                bat 'python -m compileall gesture_server.py live_gesture.py conversion.py'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running project tests...'
-                bat 'python -m compileall gesture_server.py live_gesture.py conversion.py'
+                echo 'Running basic Python validation...'
+                bat 'python -m py_compile gesture_server.py'
+                bat 'python -m py_compile live_gesture.py'
+                bat 'python -m py_compile conversion.py'
             }
         }
 
@@ -36,7 +37,8 @@ pipeline {
 
         stage('Docker Deployment') {
             steps {
-                echo 'Starting Docker container...'
+                echo 'Deploying Docker container...'
+                bat 'docker rm -f hand-gesture-app 2>NUL || exit /b 0'
                 bat 'docker run -d --name hand-gesture-app -p 5000:5000 hand-gesture-recognition'
             }
         }
@@ -44,11 +46,11 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'CI/CD Pipeline completed successfully!'
         }
 
         failure {
-            echo 'Pipeline failed. Check the console output.'
+            echo 'Pipeline failed. Check the Jenkins Console Output.'
         }
     }
 }
