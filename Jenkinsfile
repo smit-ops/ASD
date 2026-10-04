@@ -15,13 +15,13 @@ pipeline {
             steps {
                 echo 'Checking Python environment...'
                 bat 'python --version'
-                bat 'python -m compileall live_gesture.py conversion.py'
+                bat 'python -m compileall .'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running Python validation...'
+                echo 'Running automated Python validation...'
                 bat 'python -m py_compile live_gesture.py'
                 bat 'python -m py_compile conversion.py'
             }
@@ -29,16 +29,8 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                echo 'Building Docker image for Hand Gesture Recognition...'
+                echo 'Building Docker image...'
                 bat 'docker build -t hand-gesture-recognition .'
-            }
-        }
-
-        stage('Docker Deployment') {
-            steps {
-                echo 'Starting Hand Gesture Recognition application...'
-                bat 'docker rm -f hand-gesture-app 2>NUL || exit /b 0'
-                bat 'docker run -d --name hand-gesture-app hand-gesture-recognition'
             }
         }
     }
