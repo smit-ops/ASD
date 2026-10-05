@@ -1,6 +1,9 @@
 pipeline {
-
     agent any
+
+    environment {
+        DOCKER_IMAGE = "smitn06/hand-gesture-recognition:latest"
+    }
 
     stages {
 
@@ -39,11 +42,39 @@ pipeline {
 
         stage('Verify Docker Image') {
             steps {
-                echo 'Verifying Docker image created by Docker Desktop...'
+                echo 'Verifying Docker image...'
 
                 bat '''
                     docker image inspect hand-gesture-recognition:latest
                 '''
+            }
+        }
+
+        stage('Docker Hub Login and Push') {
+            steps {
+                echo 'Logging into Docker Hub...'
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+
+                    bat '''
+                        echo %DOCKERHUB_TOKEN% | docker login -u %DOCKERHUB_USERNAME% --password-stdin
+
+                        echo Tagging Docker image...
+                        docker tag hand-gesture-recognition:latest %DOCKERHUB_USERNAME%/hand-gesture-recognition:latest
+
+                        echo Pushing Docker image to Docker Hub...
+                        docker push %DOCKERHUB_USERNAME%/hand-gesture-recognition:latest
+
+                        echo Logging out from Docker Hub...
+                        docker logout
+                    '''
+                }
             }
         }
 
@@ -59,39 +90,20 @@ pipeline {
             }
         }
 
-        stage('Save Docker Image') {
-            steps {
-                echo 'Saving the Docker Desktop image as a TAR file...'
-
-                bat '''
-                    docker save -o hand-gesture-recognition.tar hand-gesture-recognition:latest
-                '''
-            }
-        }
-
-        stage('Transfer Image to EC2') {
-            steps {
-                echo 'Transferring the exact Docker image from Docker Desktop to EC2...'
-
-                sshagent(['ec2-ssh-key']) {
-                    bat '''
-                        scp -o StrictHostKeyChecking=no hand-gesture-recognition.tar ec2-user@3.26.159.222:/home/ec2-user/
-                    '''
-                }
-            }
-        }
-
         stage('Deploy to EC2') {
             steps {
-                echo 'Loading Docker image on EC2 and deploying the new container...'
+                echo 'Pulling Docker image from Docker Hub and deploying to EC2...'
 
                 sshagent(['ec2-ssh-key']) {
                     bat '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "docker load -i /home/ec2-user/hand-gesture-recognition.tar"
+                        echo Pulling latest Docker image...
+                        ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "docker pull smitn06/hand-gesture-recognition:latest"
 
+                        echo Removing old container...
                         ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "docker rm -f hand-gesture-container || true"
 
-                        ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "docker run -d -p 80:80 --name hand-gesture-container hand-gesture-recognition:latest"
+                        echo Starting new container...
+                        ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "docker run -d -p 80:80 --name hand-gesture-container smitn06/hand-gesture-recognition:latest"
                     '''
                 }
             }
@@ -99,7 +111,7 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                echo 'Verifying the deployed Docker container on EC2...'
+                echo 'Verifying Docker container on EC2...'
 
                 sshagent(['ec2-ssh-key']) {
                     bat '''
@@ -111,12 +123,15 @@ pipeline {
     }
 
     post {
-
         success {
             echo '=============================================='
             echo 'CI/CD PIPELINE COMPLETED SUCCESSFULLY!'
-            echo 'Docker Desktop image transferred to EC2.'
-            echo 'New container deployed successfully.'
+            echo '=============================================='
+            echo 'GitHub → Jenkins → Docker Build'
+            echo '      → Docker Hub → AWS EC2'
+            echo '=============================================='
+            echo 'Docker image pushed successfully.'
+            echo 'Docker container deployed successfully.'
             echo '=============================================='
         }
 
@@ -125,12 +140,6 @@ pipeline {
             echo 'PIPELINE FAILED!'
             echo 'Check the Console Output.'
             echo '=============================================='
-        }
-
-        always {
-            bat '''
-                if exist hand-gesture-recognition.tar del /Q hand-gesture-recognition.tar
-            '''
         }
     }
 }
