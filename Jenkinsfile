@@ -11,6 +11,20 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            steps {
+                echo 'Running project tests...'
+                bat '''
+                    if not exist index.html exit /b 1
+                    if not exist images exit /b 1
+                    if not exist real_fruits exit /b 1
+                    if not exist static exit /b 1
+                    echo All required project files are present.
+                    echo Test phase completed successfully!
+                '''
+            }
+        }
+
         stage('Docker Build') {
             steps {
                 echo 'Building Docker image...'
