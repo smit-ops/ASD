@@ -31,6 +31,16 @@ pipeline {
                 bat 'docker build -t hand-gesture-recognition .'
             }
         }
+
+        stage('Test EC2 SSH') {
+            steps {
+                sshagent(['ec2-ssh-key']) {
+                    bat '''
+                        ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "echo EC2 SSH connection successful"
+                    '''
+                }
+            }
+        }
     }
 
     post {
