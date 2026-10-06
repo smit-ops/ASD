@@ -3,17 +3,33 @@ pipeline {
 
     stages {
 
-        stage('Test EC2 SSH') {
+        stage('Test Docker Hub Login') {
             steps {
-                echo 'Testing SSH connection to AWS EC2...'
 
-                sshagent(['ec2-ssh-key']) {
+                echo 'Testing Docker Hub authentication...'
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-final',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_TOKEN'
+                    )
+                ]) {
+
                     bat '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@3.26.159.222 "echo EC2 SSH connection successful"
+                        echo %DOCKER_TOKEN% | docker login -u %DOCKER_USER% --password-stdin
+
+                        if errorlevel 1 (
+                            echo Docker Hub login FAILED!
+                            exit /b 1
+                        )
+
+                        echo Docker Hub login SUCCESSFUL!
+
+                        docker logout
                     '''
                 }
             }
         }
-
     }
 }
