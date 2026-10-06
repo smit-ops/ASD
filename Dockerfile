@@ -13,10 +13,10 @@ COPY icons /usr/share/nginx/html/icons
 
 COPY Tutorials /usr/share/nginx/html/Tutorials
 
-COPY "Project Logo.jpeg" /usr/share/nginx/html/
+COPY ["Project Logo.jpeg", "/usr/share/nginx/html/"]
 
 
-COPY "Project Logo small.jpeg" /usr/share/nginx/html/
+COPY ["Project Logo small.jpeg", "/usr/share/nginx/html/"]
 
 
 EXPOSE 80
