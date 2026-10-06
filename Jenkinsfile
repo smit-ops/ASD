@@ -3,30 +3,30 @@ pipeline {
 
     stages {
 
-        stage('Test Docker Hub Login') {
+        stage('Test GHCR Login') {
             steps {
 
-                echo 'Testing Docker Hub authentication...'
+                echo 'Testing GitHub Container Registry authentication...'
 
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'dockerhub-final',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_TOKEN'
+                        credentialsId: 'ghcr-credentials',
+                        usernameVariable: 'GHCR_USER',
+                        passwordVariable: 'GHCR_TOKEN'
                     )
                 ]) {
 
                     bat '''
-                        echo %DOCKER_TOKEN% | docker login -u %DOCKER_USER% --password-stdin
+                        echo %GHCR_TOKEN% | docker login ghcr.io -u %GHCR_USER% --password-stdin
 
                         if errorlevel 1 (
-                            echo Docker Hub login FAILED!
+                            echo GHCR login FAILED!
                             exit /b 1
                         )
 
-                        echo Docker Hub login SUCCESSFUL!
+                        echo GHCR login SUCCESSFUL!
 
-                        docker logout
+                        docker logout ghcr.io
                     '''
                 }
             }
