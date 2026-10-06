@@ -1,6 +1,6 @@
 pipeline {
     agent any
-
+ 
     environment {
         DOCKER_IMAGE = "smitn06/hand-gesture-recognition:latest"
     }
